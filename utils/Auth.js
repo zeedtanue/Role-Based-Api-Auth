@@ -2,10 +2,13 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const passport = require("passport");
 const User = require("../models/User");
+const Merchant = require("../models/Merchant");
+const Admin = require("../models/Admin");
 const { SECRET } = require("../config");
 
+
 /**
- * @DESC To register the user (ADMIN, SUPER_ADMIN, USER)
+ * @DESC To register the user 
  */
 const userRegister = async (userDets, role, res) => {
   try {
@@ -50,8 +53,110 @@ const userRegister = async (userDets, role, res) => {
   }
 };
 
+
 /**
- * @DESC To Login the user (ADMIN, SUPER_ADMIN, USER)
+ * @DESC To register the merchant 
+ */
+const merchantRegister = async (userDets, role, res) => {
+  try {
+    // Validate the username
+    let usernameNotTaken = await validateUsername(userDets.username);
+    if (!usernameNotTaken) {
+      return res.status(400).json({
+        message: `Username is already taken.`,
+        success: false
+      });
+    }
+
+    // validate the email
+    let emailNotRegistered = await validateEmail(userDets.email);
+    if (!emailNotRegistered) {
+      return res.status(400).json({
+        message: `Email is already registered.`,
+        success: false
+      });
+    }
+
+    // Get the hashed password
+    const password = await bcrypt.hash(userDets.password, 12);
+    // create a new user
+    const newMerchant = new Merchant({
+      ...userDets,
+      password,
+      role
+    });
+
+    await newMerchant.save();
+    return res.status(201).json({
+      message: "Hurry! now you are successfully registred in merchant. Please login.",
+      success: true
+    });
+  } catch (err) {
+    console.log(err)
+    // Implement logger function (winston)
+    return res.status(500).json({
+      message: "Unable to create your account.",
+      success: false
+    });
+  }
+};
+
+
+
+
+
+
+/**
+ * @DESC To register the admin
+ */
+
+const adminRegister = async (userDets, role, res) => {
+  try {
+    // Validate the username
+    let usernameNotTaken = await validateUsername(userDets.username);
+    if (!usernameNotTaken) {
+      return res.status(400).json({
+        message: `Username is already taken.`,
+        success: false
+      });
+    }
+
+    // validate the email
+    let emailNotRegistered = await validateEmail(userDets.email);
+    if (!emailNotRegistered) {
+      return res.status(400).json({
+        message: `Email is already registered.`,
+        success: false
+      });
+    }
+
+    // Get the hashed password
+    const password = await bcrypt.hash(userDets.password, 12);
+    // create a new user
+    const newAdmin = new Admin({
+      ...userDets,
+      password,
+      role
+    });
+
+    await newAdmin.save();
+    return res.status(201).json({
+      message: "Hurry! now you are successfully registred in admin. Please login.",
+      success: true
+    });
+  } catch (err) {
+    // Implement logger function (winston)
+    console.log(err)
+    return res.status(500).json({
+      message: "Unable to create your account.",
+      success: false
+    });
+  }
+};
+
+
+/**
+ * @DESC To Login the user 
  */
 const userLogin = async (userCreds, role, res) => {
   let { username, password } = userCreds;
@@ -107,15 +212,139 @@ const userLogin = async (userCreds, role, res) => {
   }
 };
 
+
+/**
+ * @DESC To Login the merchant
+ */
+const merchantLogin = async (userCreds, role, res) => {
+  let { username, password } = userCreds;
+  // First Check if the username is in the database
+  const user = await Merchant.findOne({ username });
+  if (!user) {
+    return res.status(404).json({
+      message: "Username is not found. Invalid login credentials.",
+      success: false
+    });
+  }
+  // We will check the role
+  if (user.role !== role) {
+    return res.status(403).json({
+      message: "Please make sure you are logging in from the right portal.",
+      success: false
+    });
+  }
+  // That means user is existing and trying to signin fro the right portal
+  // Now check for the password
+  let isMatch = await bcrypt.compare(password, user.password);
+  if (isMatch) {
+    // Sign in the token and issue it to the user
+    let token = jwt.sign(
+      {
+        user_id: user._id,
+        role: user.role,
+        username: user.username,
+        email: user.email
+      },
+      SECRET,
+      { expiresIn: "7 days" }
+    );
+
+    let result = {
+      username: user.username,
+      role: user.role,
+      email: user.email,
+      token: `Bearer ${token}`,
+      expiresIn: 168
+    };
+
+    return res.status(200).json({
+      ...result,
+      message: "Hurray! You are now logged in.",
+      success: true
+    });
+  } else {
+    return res.status(403).json({
+      message: "Incorrect password.",
+      success: false
+    });
+  }
+};
+
+
+
+
+/**
+ * @DESC To Login the admin
+ */
+const adminLogin = async (userCreds, role, res) => {
+  let { username, password } = userCreds;
+  // First Check if the username is in the database
+  const user = await Admin.findOne({ username });
+  if (!user) {
+    return res.status(404).json({
+      message: "Username is not found. Invalid login credentials.",
+      success: false
+    });
+  }
+  // We will check the role
+  if (user.role !== role) {
+    return res.status(403).json({
+      message: "Please make sure you are logging in from the right portal.",
+      success: false
+    });
+  }
+  // That means user is existing and trying to signin fro the right portal
+  // Now check for the password
+  let isMatch = await bcrypt.compare(password, user.password);
+  if (isMatch) {
+    // Sign in the token and issue it to the user
+    let token = jwt.sign(
+      {
+        user_id: user._id,
+        role: user.role,
+        username: user.username,
+        email: user.email
+      },
+      SECRET,
+      { expiresIn: "7 days" }
+    );
+
+    let result = {
+      username: user.username,
+      role: user.role,
+      email: user.email,
+      token: `Bearer ${token}`,
+      expiresIn: 168
+    };
+
+    return res.status(200).json({
+      ...result,
+      message: "Hurray! You are now logged in.",
+      success: true
+    });
+  } else {
+    return res.status(403).json({
+      message: "Incorrect password.",
+      success: false
+    });
+  }
+};
+
+
 const validateUsername = async username => {
   let user = await User.findOne({ username });
   return user ? false : true;
 };
 
+
+
 /**
  * @DESC Passport middleware
  */
-const userAuth = passport.authenticate("jwt", { session: false });
+const userAuth = passport.authenticate("passport-user", { session: false });
+const merchantAuth = passport.authenticate("passport-merchant", { session: false });
+const adminAuth = passport.authenticate("passport-admin", { session: false });
+
 
 /**
  * @DESC Check Role Middleware
@@ -143,8 +372,15 @@ const serializeUser = user => {
 
 module.exports = {
   userAuth,
+  adminAuth,
+  merchantAuth,
   checkRole,
   userLogin,
+  merchantLogin,
+  adminLogin,
   userRegister,
-  serializeUser
+  merchantRegister,
+  adminRegister,
+  serializeUser,
+
 };
