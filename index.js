@@ -22,6 +22,7 @@ require("./middlewares/passport")(passport);
 app.get('/', (req, res) => {
   res.send('Coming soon!')
 })
+
 app.use("/api/users", require("./routes/users"));
 app.use("/api/admin", require("./routes/admin"));
 app.use("/api/merchant", require("./routes/merchant"));

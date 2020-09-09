@@ -1,4 +1,6 @@
 const router = require("express").Router();
+const passport = require('passport');
+
 // Bring in the User Registration function
 const {
   userAuth,
@@ -13,6 +15,27 @@ router.post("/register-user", async (req, res) => {
   await userRegister(req.body, "user", res);
 });
 
+//google login
+router.get('/auth/google',
+  passport.authenticate('google', { scope: ['profile'] }));
+
+router.get('/auth/google/callback',
+passport.authenticate('google', { failureRedirect: '/login' }),
+(req, res)=> {
+  // Successful authentication, redirect home.
+  res.redirect('/');
+});
+
+//facebook oauth
+router.get('/auth/facebook',
+  passport.authenticate('facebook'));
+
+router.get('/auth/facebook/callback',
+  passport.authenticate('facebook', { failureRedirect: '/login' }),
+    function(req, res) {
+    // Successful authentication, redirect home.
+    res.redirect('/');
+});
 // Users Login Route
 router.post("/login-user", async (req, res) => {
   await userLogin(req.body, "user", res);

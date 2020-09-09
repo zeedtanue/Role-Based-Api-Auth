@@ -15,6 +15,10 @@ const UserSchema = new Schema(
       default: "user",
       enum: ["user", "admin", "superadmin"]
     },
+    gateway: {
+      type: String,
+      default: 'local'
+    },
     username: {
       type: String,
       required: true
